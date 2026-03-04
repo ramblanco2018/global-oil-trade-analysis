@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis Global de Exportaciones de Petróleo Crudo 1995–2021</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #f0a500;
+    --accent2: #e05a2b;
+    --accent3: #2ec4b6;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --mideast: #f0a500;
+    --latam: #2ec4b6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  header {
+    padding: 60px 60px 40px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::after {
+    content: '🛢';
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 120px;
+    opacity: 0.06;
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 5vw, 72px);
+    line-height: 1;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  /* KPI strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kpi {
+    padding: 30px 40px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    animation: fadeUp 0.6s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .kpi:nth-child(1) { animation-delay: 0.1s; }
+  .kpi:nth-child(2) { animation-delay: 0.2s; }
+  .kpi:nth-child(3) { animation-delay: 0.3s; }
+  .kpi:nth-child(4) { animation-delay: 0.4s; border-right: none; }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .kpi-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Main grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .panel {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 40px;
+    animation: fadeUp 0.8s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .panel:nth-child(even) { border-right: none; }
+  .panel:nth-child(1) { animation-delay: 0.3s; }
+  .panel:nth-child(2) { animation-delay: 0.4s; }
+  .panel:nth-child(3) { animation-delay: 0.5s; }
+  .panel:nth-child(4) { animation-delay: 0.6s; }
+
+  .panel-full {
+    grid-column: 1 / -1;
+    border-right: none;
+  }
+
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .panel-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  canvas { width: 100% !important; }
+
+  /* Ranking bars */
+  .rank-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .rank-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .rank-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .rank-bar-wrap { position: relative; height: 32px; }
+
+  .rank-bar {
+    height: 100%;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--bg);
+    transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .rank-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* Growth table */
+  .growth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .growth-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .growth-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .growth-card.positive::before { background: var(--accent3); }
+  .growth-card.negative::before { background: var(--accent2); }
+  .growth-card.extreme::before { background: var(--accent); }
+
+  .growth-country {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .growth-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .growth-card.positive .growth-pct { color: var(--accent3); }
+  .growth-card.negative .growth-pct { color: var(--accent2); }
+  .growth-card.extreme .growth-pct { color: var(--accent); }
+
+  .growth-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Share legend */
+  .legend {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  footer {
+    padding: 30px 60px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .insight-box {
+    background: linear-gradient(135deg, rgba(240,165,0,0.08), rgba(240,165,0,0.02));
+    border: 1px solid rgba(240,165,0,0.25);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-top: 20px;
+  }
+
+  .insight-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .insight-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ── DARK FLEET ALERT ── */
+  .dark-alert {
+    background: linear-gradient(135deg, rgba(224,90,43,0.10), rgba(224,90,43,0.03));
+    border: 1px solid rgba(224,90,43,0.35);
+    border-left: 4px solid #e05a2b;
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 0 0 0 0;
+  }
+  .dark-alert-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .dark-alert-icon { font-size: 20px; }
+  .dark-alert-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: #e05a2b; font-weight: 600;
+  }
+  .dark-alert-body { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .dark-alert-body strong { color: #e05a2b; }
+  .dark-alert-sources {
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
+  }
+
+  /* ── ARGENTINA CONTEXT ── */
+  .arg-alert {
+    background: linear-gradient(135deg, rgba(46,196,182,0.10), rgba(46,196,182,0.03));
+    border: 1px solid rgba(46,196,182,0.30);
+    border-left: 4px solid #2ec4b6;
+    border-radius: 4px;
+    padding: 18px 22px;
+  }
+  .arg-alert-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: #2ec4b6; font-weight: 600; margin-bottom: 10px;
+  }
+  .arg-alert-body { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .arg-alert-body strong { color: #2ec4b6; }
+  .arg-alert-sources {
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--muted);
+  }
+
+  /* ── BANNER metodológico ── */
+  .method-banner {
+    background: rgba(112,112,160,0.08);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 60px;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--muted);
+  }
+  .method-banner span { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">Proyecto de Análisis · Comercio Internacional</div>
+  <h1>EXPORTACIONES GLOBALES DE<br><span>PETRÓLEO CRUDO</span></h1>
+  <div class="subtitle">1995 – 2021 · 230 países · 7.925 registros · Valores en USD</div>
+</header>
+
+<div class="method-banner">
+  ⚠️ &nbsp;<span>NOTA METODOLÓGICA:</span>&nbsp; Este dashboard registra exclusivamente comercio <em>declarado oficialmente</em> (UN Comtrade). Los volúmenes transportados por la <span>dark fleet</span> no aparecen en estas estadísticas. Los "colapsos" de Venezuela e Irán son colapsos del comercio formal — no del volumen real exportado. Ver alertas en cada sección.
+</div>
+
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Líder indiscutido</div>
+    <div class="kpi-value">Arabia Saudita</div>
+    <div class="kpi-sub">#1 los 27 años del período</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Total exportado (global)</div>
+    <div class="kpi-value">$47.3T</div>
+    <div class="kpi-sub">Billones USD acumulados 1995–2021</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Mayor crecimiento</div>
+    <div class="kpi-value">Brasil</div>
+    <div class="kpi-sub">+81.000% entre quinquenios</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Mayor caída (mercado formal)</div>
+    <div class="kpi-value">Venezuela</div>
+    <div class="kpi-sub">De $81.6B (2013) a $5M declarados (2021) · <span style="color:#e05a2b">~$1.1B real vía dark fleet</span></div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- Panel 1: Top 10 ranking -->
+  <div class="panel">
+    <div class="panel-title">RANKING GLOBAL ACUMULADO</div>
+    <div class="panel-desc">Top 10 exportadores por valor total USD · 1995–2021</div>
+    <div class="rank-list" id="ranking"></div>
+    <div class="insight-box" style="margin-top:20px">
+      <div class="insight-title">💡 Hallazgo clave</div>
+      <div class="insight-text">Arabia Saudita acumuló <strong style="color:var(--accent)">$3.378 billones</strong>, casi el 46% más que Rusia en el segundo puesto. El podio del Medio Oriente (Arabia, EAU, Irak) suma más que el resto del top 10 combinado.</div>
+    </div>
+    <div class="dark-alert" style="margin-top:12px">
+      <div class="dark-alert-header">
+        <div class="dark-alert-icon">🚢</div>
+        <div class="dark-alert-title">Dark Fleet — Datos subestimados</div>
+      </div>
+      <div class="dark-alert-body">
+        <strong>Irán (#8) y Venezuela (#10)</strong> muestran datos del comercio formal únicamente. Sus valores reales son significativamente mayores: Irán exportó <strong>~1.1M barriles/día</strong> en 2021 vía flota fantasma; Venezuela mantenía <strong>71 supertanqueros activos hacia China</strong> en 2024. El colapso que muestra el dataset es del mercado declarado, no del volumen real.
+      </div>
+      <div class="dark-alert-sources">Fuentes: UANI Tanker Tracker · IFMAT (sep. 2024) · Bloomberg (ene. 2026) · US Treasury OFAC</div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Share de mercado por región -->
+  <div class="panel">
+    <div class="panel-title">PARTICIPACIÓN DE MERCADO</div>
+    <div class="panel-desc">% del mercado global · Medio Oriente vs América Latina</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--mideast)"></div>Medio Oriente</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--latam)"></div>América Latina</div>
+    </div>
+    <canvas id="shareChart" height="220"></canvas>
+    <div class="insight-box">
+      <div class="insight-title">💡 Hallazgo clave</div>
+      <div class="insight-text">Medio Oriente consolidó su dominio: pasó del <strong style="color:var(--accent)">34% en 1995 al 41.5% en 2016</strong>. América Latina, en cambio, perdió terreno: bajó del 11.4% al 7.5% arrastrada por el colapso venezolano.</div>
+    </div>
+    <div class="dark-alert" style="margin-top:12px">
+      <div class="dark-alert-header">
+        <div class="dark-alert-icon">⚠️</div>
+        <div class="dark-alert-title">Caída latinoamericana parcialmente ilusoria</div>
+      </div>
+      <div class="dark-alert-body">
+        Parte de la caída del share latinoamericano es una <strong>ilusión estadística</strong>: Venezuela no desapareció del mercado, migró su comercio a canales no declarados. El 40% de los buques en su flota operaban con prácticas irregulares según TankerTrackers. La brecha real entre ambas regiones existe, pero es menor que lo que el dataset sugiere.
+      </div>
+      <div class="dark-alert-sources">Fuentes: Newsweek · TankerTrackers · OEC · Reuters Factbox</div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Evolución temporal foco -->
+  <div class="panel panel-full">
+    <div class="panel-title">EVOLUCIÓN TEMPORAL · PAÍSES SELECCIONADOS</div>
+    <div class="panel-desc">Exportaciones anuales en miles de millones USD · Medio Oriente y América Latina</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f0a500"></div>Arabia Saudita</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e05a2b"></div>Irak</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div>Irán</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>EAU</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2ec4b6"></div>Venezuela</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Brasil</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div>México</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Colombia</div>
+    </div>
+    <canvas id="evolutionChart" height="120"></canvas>
+  </div>
+
+  <!-- Panel 4: Crecimiento comparado -->
+  <div class="panel panel-full">
+    <div class="panel-title">CRECIMIENTO Y POTENCIAL</div>
+    <div class="panel-desc">Variación porcentual entre quinquenio inicial (1995–1999) y quinquenio final (2017–2021)</div>
+    <div class="growth-grid" id="growthGrid"></div>
+    <div class="insight-box" style="margin-top:20px">
+      <div class="insight-title">💡 Hallazgo clave · Potencial a futuro</div>
+      <div class="insight-text">
+        <strong style="color:var(--accent3)">Brasil</strong> es la historia de crecimiento más extraordinaria del período: partió casi desde cero y se convirtió en el exportador líder de Latinoamérica. 
+        <strong style="color:var(--accent)">Irak</strong> lidera el crecimiento de Medio Oriente con +1.851%, recuperándose de décadas de conflicto. 
+        <strong style="color:var(--accent2)">Venezuela y Argentina</strong> son las grandes historias de declive regional en el período.
+      </div>
+    </div>
+    <div class="arg-alert" style="margin-top:12px">
+      <div class="arg-alert-title">🇦🇷 Argentina — Lo que el dataset no muestra</div>
+      <div class="arg-alert-body">
+        Argentina aparece con <strong>-43%</strong> en el período, pero ese dato captura solo la mitad de la historia. El desarrollo de <strong>Vaca Muerta</strong> (2.° reservorio shale gas y 4.° shale oil del mundo) transformó todo post-2021: exportaciones creciendo al <strong>+33% anual</strong>, récord de 187.000 barriles/día en 2024, superávit energético de <strong>$5.688B</strong> y proyección de triplicar exportaciones hacia 2030.
+      </div>
+      <div class="arg-alert-sources">Fuentes: Secretaría de Energía Argentina · IAPG (2024)</div>
+    </div>
+    <div class="dark-alert" style="margin-top:12px">
+      <div class="dark-alert-header">
+        <div class="dark-alert-icon">🚢</div>
+        <div class="dark-alert-title">Venezuela — Dark fleet activa post-2021</div>
+      </div>
+      <div class="dark-alert-body">
+        Venezuela figura con apenas <strong>+16%</strong> acumulado y colapso al final del período. Sin embargo, datos externos muestran que siguió exportando vía dark fleet: <strong>71 supertanqueros</strong> transportando 400.000 barriles/día hacia China en 2024. PDVSA reportó $17.52B en ventas ese año. El costo: descuentos de $8–15/barril, fletes dobles y dependencia total de un único comprador.
+      </div>
+      <div class="dark-alert-sources">Fuentes: Bloomberg (ene. 2026) · PDVSA · Reuters · OilPrice.com</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-note">Fuente: Global Crude Petroleum Trade Dataset 1995–2021 · UN Comtrade</div>
+  <div class="footer-note">Dark fleet: UANI · IFMAT · Bloomberg · US Treasury OFAC · Reuters · Argentina: Sec. Energía / IAPG</div>
+</footer>
+
+<script>
+const years = [1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021];
+
+// TOP 10 RANKING
+const top10 = [
+  { country: 'Arabia Saudita', value: 3378.1, color: '#f0a500', region: 'Medio Oriente' },
+  { country: 'Rusia',          value: 2319.0, color: '#e8e8f0', region: 'Europa' },
+  { country: 'Emiratos Árabes', value: 1187.6, color: '#f0a500', region: 'Medio Oriente' },
+  { country: 'Nigeria',        value: 1140.3, color: '#7070a0', region: 'África' },
+  { country: 'Canadá',         value: 1066.6, color: '#7070a0', region: 'América del Norte' },
+  { country: 'Irak',           value: 1016.1, color: '#f0a500', region: 'Medio Oriente' },
+  { country: 'Noruega',        value: 950.2,  color: '#7070a0', region: 'Europa' },
+  { country: 'Irán',           value: 937.4,  color: '#f0a500', region: 'Medio Oriente' },
+  { country: 'Kuwait',         value: 810.5,  color: '#f0a500', region: 'Medio Oriente' },
+  { country: 'Venezuela',      value: 770.8,  color: '#2ec4b6', region: 'América Latina' },
+];
+
+const rankList = document.getElementById('ranking');
+const maxVal = top10[0].value;
+top10.forEach((d, i) => {
+  const pct = (d.value / maxVal * 100).toFixed(1);
+  rankList.innerHTML += `
+    <div class="rank-item">
+      <div class="rank-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="rank-bar-wrap">
+        <div class="rank-bar" style="width:${pct}%; background:${d.color};">
+          ${d.country}
+        </div>
+      </div>
+      <div class="rank-val">$${d.value}B</div>
+    </div>`;
+});
+
+// SHARE CHART
+const shareCtx = document.getElementById('shareChart').getContext('2d');
+const meShare = [34.0,31.9,33.3,33.5,35.6,38.4,36.9,34.2,36.4,37.8,32.9,34.0,33.6,35.8,33.3,35.2,37.5,37.7,38.6,38.9,36.8,41.5,39.2,37.8,35.2,34.6,34.0];
+const laShare = [11.4,12.2,11.8,11.5,11.8,11.0,10.0,11.5,11.0,9.6,10.4,11.1,9.7,9.6,9.9,10.6,11.2,11.8,11.9,10.2,9.9,8.7,9.0,8.8,8.5,8.3,7.5];
+
+new Chart(shareCtx, {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: [
+      {
+        label: 'Medio Oriente %',
+        data: meShare,
+        borderColor: '#f0a500',
+        backgroundColor: 'rgba(240,165,0,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#f0a500',
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'América Latina %',
+        data: laShare,
+        borderColor: '#2ec4b6',
+        backgroundColor: 'rgba(46,196,182,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#2ec4b6',
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: { color: '#7070a0', font: { family: 'IBM Plex Mono', size: 10 }, maxTicksLimit: 9 },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      },
+      y: {
+        ticks: { color: '#7070a0', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      }
+    }
+  }
+});
+
+// EVOLUTION CHART
+const evoCtx = document.getElementById('evolutionChart').getContext('2d');
+const evoData = {
+  'Arabia Saudita': [31.5,37.2,38.0,24.5,34.8,66.9,58.2,67.4,89.1,117.4,108.7,139.1,146.0,225.8,119.9,161.2,245.2,263.1,263.9,240.6,102.8,124.6,121.8,165.9,149.3,97.4,137.6],
+  'Irak':           [0.3,0.03,2.8,4.4,9.6,20.9,15.5,8.4,7.6,14.4,15.9,25.2,32.2,52.9,33.5,44.6,68.4,80.1,79.3,76.7,47.8,42.6,58.6,82.2,74.7,45.4,72.0],
+  'Irán':           [11.8,14.3,13.1,8.4,10.9,25.1,21.4,15.0,21.6,32.3,40.5,51.8,53.6,73.8,44.3,81.1,87.2,46.7,46.2,47.8,35.5,40.7,56.6,44.1,12.4,1.2,0.1],
+  'EAU':            [10.6,13.1,13.9,9.7,10.9,18.0,15.3,13.4,18.3,24.0,38.2,49.8,57.9,92.3,41.6,55.2,81.3,98.8,93.4,86.5,47.0,36.8,45.4,58.0,57.7,42.0,58.5],
+  'Venezuela':      [8.7,12.3,12.0,8.1,10.5,18.0,14.7,17.1,19.3,19.7,29.9,45.4,37.3,62.5,33.3,46.3,63.8,78.8,81.6,48.3,24.8,18.5,21.8,23.2,12.2,2.6,0.005],
+  'Brasil':         [0.06,0.04,0.006,0.01,0.03,0.19,0.86,2.14,2.68,3.23,4.21,6.96,8.92,13.88,9.45,16.51,22.25,20.33,13.04,16.47,11.96,11.25,17.05,25.46,24.29,19.83,30.72],
+  'México':         [7.2,9.8,10.0,6.3,8.6,15.0,11.9,13.6,17.3,21.8,29.0,35.6,37.5,43.9,25.0,34.8,47.9,45.9,43.1,36.9,19.3,15.6,19.3,25.1,26.6,17.8,20.3],
+  'Colombia':       [1.9,2.5,2.4,2.1,3.3,4.1,2.6,2.6,2.5,3.0,4.0,4.8,6.3,9.6,8.9,13.5,23.5,26.9,27.1,25.5,12.5,8.2,10.9,13.8,13.0,7.5,11.3],
+};
+
+const colors = ['#f0a500','#e05a2b','#c084fc','#60a5fa','#2ec4b6','#4ade80','#f472b6','#a78bfa'];
+const datasets = Object.entries(evoData).map(([name, data], i) => ({
+  label: name,
+  data,
+  borderColor: colors[i],
+  backgroundColor: 'transparent',
+  borderWidth: 1.5,
+  pointRadius: 0,
+  tension: 0.4
+}));
+
+new Chart(evoCtx, {
+  type: 'line',
+  data: { labels: years, datasets },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#12121a',
+        borderColor: '#2a2a3e',
+        borderWidth: 1,
+        titleColor: '#e8e8f0',
+        bodyColor: '#7070a0',
+        titleFont: { family: 'IBM Plex Mono' },
+        bodyFont: { family: 'IBM Plex Mono', size: 11 },
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}B` }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#7070a0', font: { family: 'IBM Plex Mono', size: 10 }, maxTicksLimit: 9 },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      },
+      y: {
+        ticks: { color: '#7070a0', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => '$' + v + 'B' },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      }
+    }
+  }
+});
+
+// GROWTH CARDS
+const growthData = [
+  { country: 'Brasil',        pct: 81148, type: 'extreme', label: 'De casi $0 a líder latinoamericano' },
+  { country: 'Irak',          pct: 1851,  type: 'extreme', label: 'Recuperación post-conflicto sostenida' },
+  { country: 'Kuwait',        pct: 501,   type: 'positive', label: 'Crecimiento constante y estable' },
+  { country: 'Ecuador',       pct: 451,   type: 'positive', label: 'Expansión petrolera significativa' },
+  { country: 'Colombia',      pct: 366,   type: 'positive', label: 'Boom exportador 2010–2014' },
+  { country: 'EAU',           pct: 350,   type: 'positive', label: 'Diversificación y crecimiento sostenido' },
+  { country: 'Arabia Saudita',pct: 305,   type: 'positive', label: 'Dominio constante amplificado' },
+  { country: 'México',        pct: 160,   type: 'positive', label: 'Crecimiento moderado, tendencia bajista' },
+  { country: 'Irán',          pct: 96,    type: 'positive', label: 'Limitado por sanciones internacionales' },
+  { country: 'Venezuela',     pct: 16,    type: 'negative', label: 'Colapso desde 2014, casi desaparece' },
+  { country: 'Argentina',     pct: -43,   type: 'negative', label: 'Único con variación negativa del grupo' },
+];
+
+const grid = document.getElementById('growthGrid');
+growthData.forEach(d => {
+  const sign = d.pct > 0 ? '+' : '';
+  const display = Math.abs(d.pct) > 10000 ? '+81.000%' : `${sign}${d.pct.toLocaleString()}%`;
+  grid.innerHTML += `
+    <div class="growth-card ${d.type}">
+      <div class="growth-country">${d.country}</div>
+      <div class="growth-pct">${display}</div>
+      <div class="growth-label">${d.label}</div>
+    </div>`;
+});
+</script>
+</body>
+</html>

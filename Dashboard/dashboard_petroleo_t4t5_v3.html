@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis Petrolero — Tareas 4 & 5</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --gold: #e8b84b;
+    --teal: #38bdf8;
+    --red: #f87171;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
+
+  /* NAV TABS */
+  .tabs {
+    display:flex;
+    border-bottom:1px solid var(--border);
+    background:var(--surface);
+    padding: 0 40px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .tab {
+    padding: 18px 28px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* PAGES */
+  .page { display:none; padding: 40px; animation: fadeIn 0.3s ease; }
+  .page.active { display:block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  /* HEADER */
+  .page-header { margin-bottom: 36px; }
+  .page-tag { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold); letter-spacing:3px; text-transform:uppercase; margin-bottom:8px; }
+  .page-title { font-size: clamp(28px,4vw,48px); font-weight:800; line-height:1.1; }
+  .page-title span { color: var(--gold); }
+  .page-sub { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); margin-top:8px; }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .col-span-2 { grid-column: 1 / -1; }
+
+  /* PANELS */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+  }
+  .panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .panel-sub {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:24px;
+  }
+
+  /* COUNTRY CARDS */
+  .country-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+  .cc {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius:6px;
+    padding:16px;
+    position:relative;
+    overflow:hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .cc:hover { border-color: var(--gold); }
+  .cc.selected { border-color: var(--gold); background: rgba(232,184,75,0.06); }
+  .cc-accent { position:absolute; top:0; left:0; right:0; height:3px; }
+  .cc-name { font-size:13px; font-weight:700; margin-bottom:10px; margin-top:4px; }
+  .cc-peak { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:600; }
+  .cc-peaklabel { font-size:10px; color:var(--muted); margin-bottom:8px; }
+  .cc-row { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-top:4px; }
+  .cc-badge {
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:10px;
+    font-family:'JetBrains Mono',monospace;
+    margin-top:8px;
+  }
+  .badge-up { background:rgba(74,222,128,0.15); color:var(--green); }
+  .badge-down { background:rgba(248,113,113,0.15); color:var(--red); }
+  .badge-stable { background:rgba(100,116,139,0.2); color:var(--muted); }
+  .badge-collapse { background:rgba(248,113,113,0.25); color:var(--red); font-weight:600; }
+
+  /* TIMELINE BAR */
+  .timeline-wrap { margin: 8px 0; }
+  .tl-label { font-size:10px; color:var(--muted); font-family:'JetBrains Mono',monospace; margin-bottom:4px; }
+  .tl-bar-bg { background:var(--border); height:6px; border-radius:3px; position:relative; }
+  .tl-bar-fill { height:100%; border-radius:3px; transition: width 1s cubic-bezier(0.16,1,0.3,1); }
+
+  /* POTENCIAL TABLE */
+  .pot-table { width:100%; border-collapse:collapse; }
+  .pot-table th {
+    text-align:left;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--muted);
+    letter-spacing:2px;
+    padding: 8px 12px;
+    border-bottom:1px solid var(--border);
+    text-transform:uppercase;
+  }
+  .pot-table td {
+    padding:12px;
+    font-size:13px;
+    border-bottom:1px solid rgba(37,42,58,0.5);
+  }
+  .pot-table tr:last-child td { border-bottom:none; }
+  .pot-table tr:hover td { background:rgba(255,255,255,0.02); }
+  .trend-up { color:var(--green); font-weight:700; }
+  .trend-down { color:var(--red); font-weight:700; }
+  .trend-stable { color:var(--muted); }
+  .score-bar-wrap { width:100px; background:var(--border); height:6px; border-radius:3px; }
+  .score-bar { height:100%; border-radius:3px; background: linear-gradient(90deg, var(--teal), var(--green)); }
+
+  /* INSIGHT BOX */
+  .insight {
+    background: linear-gradient(135deg, rgba(232,184,75,0.07), rgba(232,184,75,0.02));
+    border: 1px solid rgba(232,184,75,0.2);
+    border-radius:6px;
+    padding:18px 22px;
+    margin-top:20px;
+  }
+  .insight-tag { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+  .insight p { font-size:13px; color:#94a3b8; line-height:1.7; }
+  .insight strong { color:var(--text); }
+
+  /* SPECIAL: Argentina context box */
+  .context-box {
+    background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(56,189,248,0.02));
+    border: 1px solid rgba(56,189,248,0.2);
+    border-radius:6px;
+    padding:18px 22px;
+    margin-top:16px;
+  }
+  .context-tag { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--teal); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+  .context-box p { font-size:13px; color:#94a3b8; line-height:1.7; }
+
+  /* VENEZUELA special */
+  .collapse-box {
+    background: linear-gradient(135deg, rgba(248,113,113,0.07), rgba(248,113,113,0.02));
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius:6px;
+    padding:18px 22px;
+    margin-top:16px;
+  }
+  .collapse-tag { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--red); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+  .collapse-box p { font-size:13px; color:#94a3b8; line-height:1.7; }
+
+  canvas { width:100% !important; }
+
+  /* ── DARK FLEET ALERT ── */
+  .dark-alert {
+    background: linear-gradient(135deg, rgba(251,146,60,0.10), rgba(251,146,60,0.03));
+    border: 1px solid rgba(251,146,60,0.35);
+    border-left: 4px solid var(--orange);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-top: 16px;
+  }
+  .dark-alert-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--orange); font-weight: 600; margin-bottom: 8px;
+  }
+  .dark-alert-body { font-size: 13px; color: #94a3b8; line-height: 1.7; }
+  .dark-alert-body strong { color: var(--orange); }
+  .dark-alert-sources {
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--muted);
+  }
+
+  /* ── MÉTODO BANNER ── */
+  .method-banner {
+    background: rgba(37,42,58,0.6);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 40px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .method-banner span { color: var(--orange); font-weight: 600; }
+</style>
+
+  /* CHART DETAIL */
+  #chartTitle { font-size:15px; font-weight:700; margin-bottom:4px; }
+  #chartSub { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:16px; }
+
+  .note-tag {
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:20px;
+    font-size:10px;
+    font-family:'JetBrains Mono',monospace;
+    background:rgba(56,189,248,0.12);
+    color:var(--teal);
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="method-banner">
+  ⚠️ &nbsp;<span>NOTA METODOLÓGICA:</span>&nbsp; Dataset registra solo comercio declarado. Los "colapsos" de Venezuela e Irán son colapsos del mercado <span>formal</span> — el volumen real vía dark fleet es significativamente mayor. Ver alertas en cada país.
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('latam')">América Latina</div>
+  <div class="tab" onclick="showPage('mideast')">Medio Oriente</div>
+  <div class="tab" onclick="showPage('potencial')">Potencial Futuro</div>
+</div>
+
+<!-- ======= PAGE 1: LATAM ======= -->
+<div class="page active" id="page-latam">
+  <div class="page-header">
+    <div class="page-tag">Tarea 4 · Análisis Regional</div>
+    <div class="page-title">AMÉRICA <span>LATINA</span></div>
+    <div class="page-sub">Exportaciones de petróleo crudo · 1995–2021 · Seleccioná un país para ver su evolución</div>
+  </div>
+
+  <div class="country-cards" id="latam-cards"></div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div id="chartTitle">Seleccioná un país</div>
+      <div id="chartSub">Haz click en una tarjeta para ver la evolución anual</div>
+      <canvas id="latamChart" height="220"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Todos los países · Comparativa</div>
+      <div class="panel-sub">Exportaciones anuales en miles de millones USD</div>
+      <canvas id="latamAllChart" height="220"></canvas>
+    </div>
+
+    <div class="panel col-span-2" id="latam-context">
+      <div class="panel-title">Contexto regional</div>
+      <div class="panel-sub">Seleccioná un país para ver su análisis</div>
+      <p style="color:var(--muted);font-size:13px">Hacé click en cualquier tarjeta de país para ver el análisis detallado.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======= PAGE 2: MEDIO ORIENTE ======= -->
+<div class="page" id="page-mideast">
+  <div class="page-header">
+    <div class="page-tag">Tarea 4 · Análisis Regional</div>
+    <div class="page-title">MEDIO <span>ORIENTE</span></div>
+    <div class="page-sub">Exportaciones de petróleo crudo · 1995–2021 · El epicentro del mercado global</div>
+  </div>
+
+  <div class="country-cards" id="mideast-cards"></div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div id="meChartTitle">Seleccioná un país</div>
+      <div id="meChartSub" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:24px;">Haz click en una tarjeta</div>
+      <canvas id="mideastChart" height="220"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Todos los países · Comparativa</div>
+      <div class="panel-sub">Exportaciones anuales en miles de millones USD</div>
+      <canvas id="mideastAllChart" height="220"></canvas>
+    </div>
+    <div class="panel col-span-2" id="mideast-context">
+      <div class="panel-title">Contexto regional</div>
+      <div class="panel-sub">Seleccioná un país para ver su análisis</div>
+      <p style="color:var(--muted);font-size:13px">Hacé click en cualquier tarjeta de país para ver el análisis detallado.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======= PAGE 3: POTENCIAL ======= -->
+<div class="page" id="page-potencial">
+  <div class="page-header">
+    <div class="page-tag">Tarea 5 · Tendencias y Proyecciones</div>
+    <div class="page-title">POTENCIAL <span>FUTURO</span></div>
+    <div class="page-sub">Tendencia 2015–2021 + momentum reciente · Proyección cualitativa hacia 2025+</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel col-span-2">
+      <div class="panel-title">Ranking de potencial exportador</div>
+      <div class="panel-sub">Basado en tendencia 2015-2021, momentum reciente y contexto externo al dataset</div>
+      <table class="pot-table">
+        <thead>
+          <tr>
+            <th>#</th><th>País</th><th>Región</th><th>Tendencia 2015–21</th><th>Momentum 2019→21</th><th>Potencial</th><th>Nota clave</th>
+          </tr>
+        </thead>
+        <tbody id="potTable"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Tendencia anual (B USD/año)</div>
+      <div class="panel-sub">Pendiente de regresión lineal 2015–2021</div>
+      <canvas id="tendenciaChart" height="260"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Ganadores y perdedores del período</div>
+      <div class="panel-sub">Variación 2019→2021 (momentum COVID + post-COVID)</div>
+      <canvas id="momentumChart" height="260"></canvas>
+    </div>
+
+    <div class="insight col-span-2">
+      <div class="insight-tag">💡 Conclusión — Potencial a futuro</div>
+      <p>
+        Dentro del dataset, <strong>Irak y Brasil</strong> son los dos casos con mayor potencial proyectable: Irak por su tendencia sostenida (+3.4B/año) y reservas sin explotar; Brasil por su crecimiento ininterrumpido hasta 2021 como pico del período.
+        <strong>Arabia Saudita</strong> mantiene dominio estructural pero con señales de plateau.
+        <strong>Irán y Venezuela</strong> quedan condicionados por factores no petroleros que el dataset no captura — pero cuya magnitud real es mucho mayor de lo que los números sugieren.
+        <strong>Argentina</strong> es el caso más interesante fuera del dataset: en 2021 parecía estable-declinante, pero Vaca Muerta la convierte en el mayor emergente de América Latina.
+      </p>
+    </div>
+
+    <div class="dark-alert col-span-2" style="margin-top:0">
+      <div class="dark-alert-title">🚢 Dark Fleet — Por qué Irán y Venezuela están subvalorados en este ranking</div>
+      <div class="dark-alert-body">
+        El ranking de potencial se basa en tendencia del comercio <strong>declarado</strong>. Pero Irán y Venezuela siguen exportando volúmenes significativos vía dark fleet:<br><br>
+        &bull; <strong>Irán:</strong> 587M de barriles en 2024 · 477+ buques identificados · IRGC captura 40–50% de ingresos (US Treasury OFAC) · Reporte IFMAT sep. 2024: mayor red de smuggling petrolero del mundo<br>
+        &bull; <strong>Venezuela:</strong> 71 supertanqueros activos en 2024 · 400k bbl/día hacia China · PDVSA reportó $17.52B ese año (Bloomberg ene. 2026)<br><br>
+        El score bajo no refleja ausencia de petróleo ni de exportaciones — refleja el costo institucional de exportar en el mercado negro: precios castigados ($8–15/bbl de descuento), fletes dobles, dependencia de un único comprador y riesgo legal permanente.
+      </div>
+      <div class="dark-alert-sources">Fuentes: IFMAT (sep. 2024) · UANI Tanker Tracker · US Treasury OFAC (dic. 2025) · Bloomberg (ene. 2026) · PDVSA · Reuters</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(56,189,248,0.02));border:1px solid rgba(56,189,248,0.25);border-left:4px solid #38bdf8;border-radius:6px;padding:18px 22px;margin-top:0" class="col-span-2">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#38bdf8;font-weight:600;margin-bottom:8px">🇦🇷 Argentina — El emergente que el dataset no anticipaba</div>
+      <div style="font-size:13px;color:#94a3b8;line-height:1.7">
+        Argentina figura en el ranking con score 78 y tendencia "Estable*". Ese asterisco es el dato más importante de la tabla. <strong style="color:#38bdf8">Vaca Muerta</strong> —segundo reservorio shale gas y cuarto shale oil del mundo— transformó completamente su trayectoria exactamente cuando este dataset termina: exportaciones creciendo <strong style="color:#38bdf8">+33% anual</strong> · <strong style="color:#38bdf8">187.000 bbl/día</strong> en 2024 (récord 20 años) · superávit energético <strong style="color:#38bdf8">$5.688B</strong> · proyección de triplicar exportaciones hacia 2030. Es el contrapunto directo de Venezuela: mismo continente, condiciones geológicas comparables, resultados opuestos por decisiones institucionales distintas.
+      </div>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b">Fuentes: Secretaría de Energía Argentina · IAPG (2024)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const years = [1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021];
+
+const data = {
+  'Venezuela':      {v:[8.7,12.3,12.0,8.1,10.5,18.0,14.7,17.1,19.3,19.7,29.9,45.4,37.3,62.5,33.3,46.3,63.8,78.8,81.6,48.3,24.8,18.5,21.8,23.2,12.2,2.6,0.005], color:'#f87171', region:'latam'},
+  'Brasil':         {v:[0.06,0.04,0.006,0.01,0.03,0.19,0.86,2.14,2.68,3.23,4.21,6.96,8.92,13.88,9.45,16.51,22.25,20.33,13.04,16.47,11.96,11.25,17.05,25.46,24.29,19.83,30.72], color:'#4ade80', region:'latam'},
+  'Colombia':       {v:[1.9,2.5,2.4,2.1,3.3,4.1,2.6,2.6,2.5,3.0,4.0,4.8,6.3,9.6,8.9,13.5,23.5,26.9,27.1,25.5,12.5,8.2,10.9,13.8,13.0,7.5,11.3], color:'#fb923c', region:'latam'},
+  'Ecuador':        {v:[1.4,1.5,1.3,0.8,1.3,2.1,1.7,1.8,2.4,4.0,5.5,7.0,7.5,10.7,6.4,9.2,12.3,12.8,13.7,13.5,6.4,5.2,6.3,7.9,7.8,4.9,7.4], color:'#facc15', region:'latam'},
+  'México':         {v:[7.2,9.8,10.0,6.3,8.6,15.0,11.9,13.6,17.3,21.8,29.0,35.6,37.5,43.9,25.0,34.8,47.9,45.9,43.1,36.9,19.3,15.6,19.3,25.1,26.6,17.8,20.3], color:'#a78bfa', region:'latam'},
+  'Argentina':      {v:[1.6,2.3,2.2,1.5,1.6,2.8,2.4,2.3,2.4,2.3,2.5,2.4,1.3,1.6,2.5,2.6,2.2,2.6,1.7,1.6,0.72,0.77,0.58,1.52,1.30,0.70,1.19], color:'#38bdf8', region:'latam'},
+  'Arabia Saudita': {v:[31.5,37.2,38.0,24.5,34.8,66.9,58.2,67.4,89.1,117.4,108.7,139.1,146.0,225.8,119.9,161.2,245.2,263.1,263.9,240.6,102.8,124.6,121.8,165.9,149.3,97.4,137.6], color:'#e8b84b', region:'mideast'},
+  'Irak':           {v:[0.3,0.03,2.8,4.4,9.6,20.9,15.5,8.4,7.6,14.4,15.9,25.2,32.2,52.9,33.5,44.6,68.4,80.1,79.3,76.7,47.8,42.6,58.6,82.2,74.7,45.4,72.0], color:'#f97316', region:'mideast'},
+  'Irán':           {v:[11.8,14.3,13.1,8.4,10.9,25.1,21.4,15.0,21.6,32.3,40.5,51.8,53.6,73.8,44.3,81.1,87.2,46.7,46.2,47.8,35.5,40.7,56.6,44.1,12.4,1.2,0.13], color:'#c084fc', region:'mideast'},
+  'Kuwait':         {v:[5.7,7.3,7.3,5.0,6.6,11.2,9.0,8.3,10.2,13.7,21.5,29.6,33.3,52.9,31.6,41.5,59.4,71.7,69.5,63.1,33.7,26.7,34.2,47.9,41.8,27.6,40.1], color:'#34d399', region:'mideast'},
+  'EAU':            {v:[10.6,13.1,13.9,9.7,10.9,18.0,15.3,13.4,18.3,24.0,38.2,49.8,57.9,92.3,41.6,55.2,81.3,98.8,93.4,86.5,47.0,36.8,45.4,58.0,57.7,42.0,58.5], color:'#60a5fa', region:'mideast'},
+  'Qatar':          {v:[2.2,2.9,3.6,2.9,3.6,5.1,6.2,4.7,7.3,9.4,13.4,15.9,20.6,31.4,16.8,24.4,35.0,35.9,33.4,25.8,15.5,11.9,13.9,17.7,15.4,9.9,14.8], color:'#f472b6', region:'mideast'},
+};
+
+const meta = {
+  'Venezuela':      { peak:81.6, peakY:2013, v2021:0.005, trend:'📉 BAJA',  momentum:-100.0, badge:'collapse', badgeText:'COLAPSO TOTAL' },
+  'Brasil':         { peak:30.7, peakY:2021, v2021:30.72,  trend:'📈 SUBE',  momentum:+26.5,  badge:'up',      badgeText:'EN ASCENSO' },
+  'Colombia':       { peak:27.1, peakY:2013, v2021:11.33,  trend:'➡️ ESTABLE', momentum:-13.2, badge:'stable',  badgeText:'ESTABLE' },
+  'Ecuador':        { peak:13.7, peakY:2013, v2021:7.44,   trend:'➡️ ESTABLE', momentum:-4.9,  badge:'stable',  badgeText:'ESTABLE' },
+  'México':         { peak:47.9, peakY:2011, v2021:20.25,  trend:'📈 SUBE',  momentum:-23.8,  badge:'stable',  badgeText:'RECUPERANDO' },
+  'Argentina':      { peak:2.8,  peakY:2000, v2021:1.19,   trend:'➡️ ESTABLE', momentum:-9.0,  badge:'up',      badgeText:'VACA MUERTA ↑' },
+  'Arabia Saudita': { peak:263.9,peakY:2013, v2021:137.6,  trend:'📈 SUBE',  momentum:-7.8,   badge:'up',      badgeText:'DOMINANTE' },
+  'Irak':           { peak:82.2, peakY:2018, v2021:72.0,   trend:'📈 SUBE',  momentum:-3.6,   badge:'up',      badgeText:'EN ASCENSO' },
+  'Irán':           { peak:87.2, peakY:2011, v2021:0.13,   trend:'📉 BAJA',  momentum:-99.0,  badge:'collapse',badgeText:'SANCIONES' },
+  'Kuwait':         { peak:71.7, peakY:2012, v2021:40.1,   trend:'📈 SUBE',  momentum:-4.2,   badge:'up',      badgeText:'ESTABLE' },
+  'EAU':            { peak:98.8, peakY:2012, v2021:58.5,   trend:'📈 SUBE',  momentum:+1.3,   badge:'up',      badgeText:'SÓLIDO' },
+  'Qatar':          { peak:35.9, peakY:2012, v2021:14.8,   trend:'➡️ ESTABLE', momentum:-3.7,  badge:'stable',  badgeText:'ESTABLE' },
+};
+
+const contexts = {
+  'Venezuela': {
+    type:'collapse',
+    tag:'CASO DE ESTUDIO: COLAPSO INSTITUCIONAL + DARK FLEET ACTIVA',
+    html:`Venezuela fue el <strong>décimo exportador mundial</strong> con $81.6B en 2013, con las <strong>reservas probadas más grandes del mundo</strong>. El dataset muestra $5 millones en 2021. Pero eso no es todo.<br><br>
+    <strong style="color:#fb923c">⚠️ Lo que el dataset no puede registrar:</strong> Venezuela no dejó de exportar — migró su comercio a la <em>dark fleet</em>. Estimaciones externas ubican las exportaciones reales en ~$1.1B en 2021. Para 2024, <strong>71 supertanqueros</strong> transportaban 400.000 bbl/día hacia China; PDVSA reportó <strong>$17.52B</strong> en ventas ese año. El supertanquero Marbella operó con transponder apagado por más de un año.<br><br>
+    El costo real de la maldición institucional: descuentos de <strong>$8–15/barril</strong>, fletes que duplican el mercado, y un único comprador (China) que impone las condiciones. El recurso existe — lo que desapareció es el acceso al mercado formal.<br><br>
+    <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#64748b">Fuentes: Bloomberg (ene. 2026) · PDVSA · OEC · Reuters Factbox · OilPrice.com · Newsweek</span>`
+  },
+  'Brasil': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: CRECIMIENTO EXTRAORDINARIO',
+    html:`Brasil partió desde una base casi cero en petróleo crudo (exportaba gas y derivados). El descubrimiento y desarrollo del <strong>pre-sal</strong> (yacimientos offshore profundos) desde 2006 transformó al país. Petrobras multiplicó su producción consistentemente, y en 2021 Brasil alcanzó su <strong>pico histórico de $30.7B</strong> con tendencia creciente. Es el mayor exportador latinoamericano al cierre del período.`
+  },
+  'Colombia': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: AUGE Y MESETA',
+    html:`Colombia vivió un boom entre 2010 y 2013 impulsado por inversión extranjera y mejora de seguridad. Llegó a <strong>$27.1B en 2013</strong>. Desde entonces la producción convencional declinó y el país no logró reemplazarla con no convencionales por restricciones regulatorias. Se mantiene como exportador relevante pero sin perspectivas de crecimiento fuerte en el corto plazo.`
+  },
+  'Ecuador': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: EXPORTADOR MEDIANO ESTABLE',
+    html:`Ecuador muestra un perfil interesante: creció sostenidamente hasta 2013 ($13.7B) y luego se estabilizó. Su dependencia del petróleo es estructural para las finanzas del Estado. La salida de la OPEP en 2020 (y reingreso posterior) refleja tensiones entre maximizar ingresos y cumplir cuotas. Exportador mediano con perspectivas estables pero limitadas.`
+  },
+  'México': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: DECLIVE Y RECUPERACIÓN PARCIAL',
+    html:`México alcanzó su pico en <strong>$47.9B en 2011</strong> con el campo Cantarell en plena producción. La caída posterior fue constante por agotamiento de yacimientos maduros. La reforma energética de 2013 abrió el sector privado, y hay señales de recuperación moderada. Sin embargo, la política de AMLO (2018-2024) priorizó Pemex estatal sobre inversión privada, limitando el rebote.`
+  },
+  'Argentina': {
+    type:'context',
+    tag:'🇦🇷 CASO ESPECIAL: LO QUE EL DATASET NO MUESTRA — VACA MUERTA',
+    html:`Argentina aparece en el dataset como exportador menor en declive ($1.19B en 2021, -43% respecto al pico de 2000). Esa lectura captura solo la primera mitad de la historia.<br><br>
+    El desarrollo de <strong>Vaca Muerta</strong> — segundo reservorio de shale gas y cuarto de shale oil del mundo, ubicado en la Patagonia neuquina — transformó completamente el panorama energético argentino exactamente cuando el dataset termina:<br><br>
+    &bull; Exportaciones creciendo a <strong>+33% anual</strong> entre 2017 y 2023<br>
+    &bull; <strong>187.000 barriles/día</strong> en 2024 — récord en 20 años<br>
+    &bull; Superávit energético 2024: <strong>$5.688B</strong> (mejor en 18 años)<br>
+    &bull; Proyección: triplicar exportaciones hacia 2030<br><br>
+    Argentina es el <strong>mayor emergente de América Latina</strong> en el sector, con un potencial que el dataset 1995–2021 no podía anticipar.<br><br>
+    <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#64748b">Fuentes: Secretaría de Energía Argentina · IAPG (2024)</span>`
+  },
+  'Arabia Saudita': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: DOMINIO ABSOLUTO',
+    html:`Arabia Saudita fue <strong>#1 los 27 años consecutivos</strong> del período. Nunca perdió el liderazgo. Sus exportaciones crecieron de $31.5B (1995) a un pico de $263.9B (2013). La caída post-2013 refleja el crash del precio del crudo, no pérdida de volumen. Saudi Aramco es la empresa más rentable del mundo y el país controla sus costos de producción con los más bajos del planeta (~$3/barril).`
+  },
+  'Irak': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: RECUPERACIÓN POST-CONFLICTO',
+    html:`Irak es la historia de recuperación más notable del Medio Oriente. En 1996 exportó apenas $28 millones por las sanciones de la ONU. Su recuperación post-2003 fue gradual pero constante, y alcanzó <strong>$82.2B en 2018</strong>. Con tendencia positiva sostenida y reservas masivas sin explotar, es el país con mayor potencial de crecimiento de la región dentro del período analizado.`
+  },
+  'Irán': {
+    type:'collapse',
+    tag:'CASO DE ESTUDIO: COLAPSO FORMAL + DARK FLEET MÁS GRANDE DEL MUNDO',
+    html:`Irán llegó a <strong>$87.2B en 2011</strong>. El dataset registra $130 millones en 2021 (-99.9%). Pero ese número solo refleja el colapso del comercio <em>declarado</em>.<br><br>
+    <strong style="color:#fb923c">⚠️ La realidad detrás del dataset:</strong> Irán construyó la red de contrabando petrolero más grande del mundo. El IRGC (Guardia Revolucionaria) controla entre el <strong>40% y 50%</strong> de las exportaciones petroleras iraníes vía canales no oficiales, según el Departamento del Tesoro de EE.UU. (OFAC).<br><br>
+    Los números reales: <strong>~1.1M de barriles/día</strong> exportados en 2021 (EIA/UANI), <strong>533M de barriles</strong> en 2023, <strong>587M en 2024</strong> (+10.75%). La flota fantasma identificada supera los <strong>477 buques</strong> (UANI). El reporte IFMAT de septiembre 2024 la categoriza como la mayor operación de smuggling petrolero del mundo.<br><br>
+    El costo: descuentos de <strong>$8–15/barril</strong> con China como único comprador, y el IRGC drenando la mitad de los ingresos en lugar de reinvertirlos en el Estado.<br><br>
+    <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#64748b">Fuentes: US Treasury OFAC (dic. 2025) · UANI Tanker Tracker · IFMAT (sep. 2024) · EIA</span>`
+  },
+  'Kuwait': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: ESTABILIDAD DEL GOLFO',
+    html:`Kuwait muestra el perfil más estable del Golfo: crecimiento constante sin grandes sobresaltos políticos. Alcanzó su pico en 2012 ($71.7B) y mantiene niveles sólidos. Su limitación es geográfica: es un país pequeño con reservas finitas, y opera dentro de las cuotas OPEP con poca flexibilidad para crecer rápidamente.`
+  },
+  'EAU': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: DIVERSIFICACIÓN Y SOLIDEZ',
+    html:`Los Emiratos Árabes Unidos son el caso de mayor solidez del dataset después de Arabia Saudita. Pico de $98.8B en 2012, con tendencia positiva hacia 2021. Abu Dhabi controla los yacimientos (ADNOC) y su gestión es reconocida como una de las más eficientes del mundo. Combinan petróleo con una economía diversificada (turismo, finanzas, logística), lo que les da resiliencia ante shocks de precio.`
+  },
+  'Qatar': {
+    type:'insight',
+    tag:'CASO DE ESTUDIO: GAS > PETRÓLEO',
+    html:`Qatar es un caso especial: su verdadero poder es el <strong>gas natural licuado (GNL)</strong>, no el petróleo crudo. El dataset subestima su relevancia energética global. Como exportador de crudo es mediano ($35.9B pico en 2012), pero como exportador de GNL es líder mundial. El bloqueo de sus vecinos del Golfo (2017-2021) no afectó visiblemente sus exportaciones petroleras.`
+  },
+};
+
+// Build country cards
+function buildCards(region, containerId) {
+  const container = document.getElementById(containerId);
+  const countries = Object.keys(data).filter(c => data[c].region === region);
+  countries.forEach(c => {
+    const m = meta[c];
+    const badgeClass = m.badge === 'up' ? 'badge-up' : m.badge === 'collapse' ? 'badge-collapse' : m.badge === 'down' ? 'badge-down' : 'badge-stable';
+    container.innerHTML += `
+      <div class="cc" onclick="selectCountry('${c}','${region}')" id="cc-${c.replace(/ /g,'_')}">
+        <div class="cc-accent" style="background:${data[c].color}"></div>
+        <div class="cc-name">${c}</div>
+        <div class="cc-peak">$${m.peak}B</div>
+        <div class="cc-peaklabel">pico en ${m.peakY}</div>
+        <div class="cc-row"><span>2021:</span><span>$${m.v2021}B</span></div>
+        <div class="cc-row"><span>Tendencia:</span><span>${m.trend}</span></div>
+        <div><span class="cc-badge ${badgeClass}">${m.badgeText}</span></div>
+      </div>`;
+  });
+}
+
+buildCards('latam','latam-cards');
+buildCards('mideast','mideast-cards');
+
+// Individual charts
+let latamChart = null, mideastChart = null;
+
+function selectCountry(country, region) {
+  // Deselect others
+  document.querySelectorAll('.cc').forEach(c => c.classList.remove('selected'));
+  document.getElementById('cc-'+country.replace(/ /g,'_')).classList.add('selected');
+
+  const d = data[country];
+  const ctx = region === 'latam' ? document.getElementById('latamChart').getContext('2d') : document.getElementById('mideastChart').getContext('2d');
+  const titleEl = region === 'latam' ? 'chartTitle' : 'meChartTitle';
+  const subEl = region === 'latam' ? 'chartSub' : 'meChartSub';
+
+  document.getElementById(titleEl).textContent = country + ' — Exportaciones 1995–2021';
+  document.getElementById(subEl).textContent = 'Miles de millones USD · Pico: $' + meta[country].peak + 'B (' + meta[country].peakY + ')';
+
+  const chartRef = region === 'latam' ? 'latamChart' : 'mideastChart';
+  if (window[chartRef + 'Inst']) window[chartRef + 'Inst'].destroy();
+
+  window[chartRef + 'Inst'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [{
+        label: country,
+        data: d.v,
+        backgroundColor: years.map(y => y === meta[country].peakY ? d.color : d.color + '55'),
+        borderColor: d.color,
+        borderWidth: 1,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#141720',
+          borderColor: '#252a3a',
+          borderWidth: 1,
+          titleColor: '#e2e8f0',
+          bodyColor: '#64748b',
+          titleFont: { family: 'JetBrains Mono' },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: { label: ctx => ` $${ctx.parsed.y.toFixed(2)}B` }
+        }
+      },
+      scales: {
+        x: { ticks: { color:'#64748b', font:{family:'JetBrains Mono',size:9}, maxTicksLimit:9 }, grid:{color:'rgba(255,255,255,0.03)'} },
+        y: { ticks: { color:'#64748b', font:{family:'JetBrains Mono',size:9}, callback: v => '$'+v+'B' }, grid:{color:'rgba(255,255,255,0.03)'} }
+      }
+    }
+  });
+
+  // Context box
+  const ctxBox = contexts[country];
+  const contextEl = document.getElementById(region+'-context');
+  const boxType = ctxBox.type === 'collapse' ? 'collapse-box' : ctxBox.type === 'context' ? 'context-box' : 'insight';
+  const tagType = ctxBox.type === 'collapse' ? 'collapse-tag' : ctxBox.type === 'context' ? 'context-tag' : 'insight-tag';
+  contextEl.innerHTML = `
+    <div class="${boxType}" style="margin-top:0">
+      <div class="${tagType}">📊 ${ctxBox.tag}</div>
+      <p>${ctxBox.html}</p>
+    </div>`;
+}
+
+// All-countries comparison chart for LATAM
+const latamAllCtx = document.getElementById('latamAllChart').getContext('2d');
+const latamCountries = ['Venezuela','Brasil','Colombia','Ecuador','México','Argentina'];
+const latamColors = ['#f87171','#4ade80','#fb923c','#facc15','#a78bfa','#38bdf8'];
+const latamKeys = ['Venezuela','Brasil','Colombia','Ecuador','México','Argentina'];
+const dataKeys =  ['Venezuela','Brasil','Colombia','Ecuador','México','Argentina'];
+
+new Chart(latamAllCtx, {
+  type:'line',
+  data:{
+    labels:years,
+    datasets: ['Venezuela','Brasil','Colombia','Ecuador','México','Argentina'].map((c,i) => ({
+      label:c,
+      data:data[c].v,
+      borderColor:data[c].color,
+      backgroundColor:'transparent',
+      borderWidth:1.5,
+      pointRadius:0,
+      tension:0.4
+    }))
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{ labels:{ color:'#64748b', font:{family:'JetBrains Mono',size:10}, boxWidth:12 } },
+      tooltip:{
+        backgroundColor:'#141720', borderColor:'#252a3a', borderWidth:1,
+        titleColor:'#e2e8f0', bodyColor:'#64748b',
+        titleFont:{family:'JetBrains Mono'}, bodyFont:{family:'JetBrains Mono',size:11},
+        callbacks:{ label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}B` }
+      }
+    },
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},maxTicksLimit:9},grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},callback:v=>'$'+v+'B'},grid:{color:'rgba(255,255,255,0.03)'}}
+    }
+  }
+});
+
+// All-countries comparison chart for MIDEAST
+const meAllCtx = document.getElementById('mideastAllChart').getContext('2d');
+new Chart(meAllCtx, {
+  type:'line',
+  data:{
+    labels:years,
+    datasets:['Arabia Saudita','Irak','Irán','Kuwait','EAU','Qatar'].map(c=>({
+      label:c,
+      data:data[c].v,
+      borderColor:data[c].color,
+      backgroundColor:'transparent',
+      borderWidth:1.5,
+      pointRadius:0,
+      tension:0.4
+    }))
+  },
+  options:{
+    responsive:true,
+    plugins:{
+      legend:{labels:{color:'#64748b',font:{family:'JetBrains Mono',size:10},boxWidth:12}},
+      tooltip:{
+        backgroundColor:'#141720',borderColor:'#252a3a',borderWidth:1,
+        titleColor:'#e2e8f0',bodyColor:'#64748b',
+        titleFont:{family:'JetBrains Mono'},bodyFont:{family:'JetBrains Mono',size:11},
+        callbacks:{label:ctx=>` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}B`}
+      }
+    },
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},maxTicksLimit:9},grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},callback:v=>'$'+v+'B'},grid:{color:'rgba(255,255,255,0.03)'}}
+    }
+  }
+});
+
+// POTENCIAL TABLE
+const potData = [
+  { rank:1, country:'Irak',          region:'Medio Oriente', trend:'+3.4B/año', tClass:'trend-up',    momentum:'-3.6%',  score:92, nota:'Reservas masivas sin explotar, tendencia positiva sostenida' },
+  { rank:2, country:'Brasil',        region:'América Latina', trend:'+2.9B/año', tClass:'trend-up',   momentum:'+26.5%', score:90, nota:'Único país en pico histórico al cierre del dataset' },
+  { rank:3, country:'Arabia Saudita',region:'Medio Oriente', trend:'+2.8B/año', tClass:'trend-up',    momentum:'-7.8%',  score:85, nota:'Dominio estructural, costos más bajos del mundo' },
+  { rank:4, country:'EAU',           region:'Medio Oriente', trend:'+2.1B/año', tClass:'trend-up',    momentum:'+1.3%',  score:80, nota:'Gestión eficiente, economía diversificada' },
+  { rank:5, country:'Argentina',     region:'América Latina', trend:'Estable*', tClass:'trend-stable', momentum:'-9.0%', score:78, nota:'(*) Vaca Muerta: +33%/año post-2021, mayor emergente LatAm' },
+  { rank:6, country:'Kuwait',        region:'Medio Oriente', trend:'+1.0B/año', tClass:'trend-up',    momentum:'-4.2%',  score:70, nota:'Estable y predecible, limitado por tamaño' },
+  { rank:7, country:'México',        region:'América Latina', trend:'+0.5B/año', tClass:'trend-up',   momentum:'-23.8%', score:55, nota:'Recuperación posible pero incierta por política energética' },
+  { rank:8, country:'Qatar',         region:'Medio Oriente', trend:'Estable',   tClass:'trend-stable', momentum:'-3.7%', score:50, nota:'Potencial real en GNL, no en crudo' },
+  { rank:9, country:'Colombia',      region:'América Latina', trend:'Estable',  tClass:'trend-stable', momentum:'-13.2%',score:45, nota:'Sin catalizador claro para nuevo crecimiento' },
+  { rank:10,country:'Ecuador',       region:'América Latina', trend:'Estable',  tClass:'trend-stable', momentum:'-4.9%', score:40, nota:'Exportador mediano, perspectivas limitadas' },
+  { rank:11,country:'Irán',          region:'Medio Oriente', trend:'-8.2B/año', tClass:'trend-down',  momentum:'-99%',   score:15, nota:'Condicionado 100% por factores geopolíticos externos' },
+  { rank:12,country:'Venezuela',     region:'América Latina', trend:'-4.1B/año',tClass:'trend-down',  momentum:'-100%',  score:5,  nota:'Colapso institucional y productivo, sin señales de recuperación' },
+];
+
+const tbody = document.getElementById('potTable');
+potData.forEach(d => {
+  tbody.innerHTML += `
+    <tr>
+      <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px">${String(d.rank).padStart(2,'0')}</td>
+      <td style="font-weight:700">${d.country}</td>
+      <td style="color:var(--muted);font-size:12px">${d.region}</td>
+      <td class="${d.tClass}" style="font-family:'JetBrains Mono',monospace;font-size:12px">${d.trend}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${parseFloat(d.momentum)>0?'var(--green)':'var(--muted)'}">${d.momentum}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${d.score}%"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${d.score}</span>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--muted);max-width:280px">${d.nota}</td>
+    </tr>`;
+});
+
+// TENDENCIA CHART
+const tendCtx = document.getElementById('tendenciaChart').getContext('2d');
+const tendData = [
+  { c:'Irak', v:3.38 }, { c:'Brasil', v:2.88 }, { c:'Arabia S.', v:2.77 },
+  { c:'EAU', v:2.05 }, { c:'Kuwait', v:1.03 }, { c:'México', v:0.52 },
+  { c:'Ecuador', v:0.15 }, { c:'Argentina', v:0.07 }, { c:'Colombia', v:-0.10 },
+  { c:'Qatar', v:-0.16 }, { c:'Venezuela', v:-4.13 }, { c:'Irán', v:-8.19 },
+].reverse();
+
+new Chart(tendCtx, {
+  type:'bar',
+  data:{
+    labels: tendData.map(d=>d.c),
+    datasets:[{
+      data: tendData.map(d=>d.v),
+      backgroundColor: tendData.map(d => d.v > 0 ? 'rgba(74,222,128,0.7)' : 'rgba(248,113,113,0.7)'),
+      borderColor: tendData.map(d => d.v > 0 ? '#4ade80' : '#f87171'),
+      borderWidth:1, borderRadius:3
+    }]
+  },
+  options:{
+    indexAxis:'y',
+    responsive:true,
+    plugins:{legend:{display:false},tooltip:{
+      backgroundColor:'#141720',borderColor:'#252a3a',borderWidth:1,
+      titleColor:'#e2e8f0',bodyColor:'#64748b',
+      titleFont:{family:'JetBrains Mono'},bodyFont:{family:'JetBrains Mono',size:11},
+      callbacks:{label:ctx=>` ${ctx.parsed.x > 0 ? '+' : ''}${ctx.parsed.x.toFixed(2)}B/año`}
+    }},
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},callback:v=>(v>0?'+':'')+v+'B'},grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{ticks:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10}},grid:{display:false}}
+    }
+  }
+});
+
+// MOMENTUM CHART
+const momCtx = document.getElementById('momentumChart').getContext('2d');
+const momData = [
+  {c:'Brasil', v:26.5},{c:'EAU', v:1.3},{c:'Qatar', v:-3.7},{c:'Kuwait', v:-4.2},
+  {c:'Ecuador', v:-4.9},{c:'Irak', v:-3.6},{c:'Arabia S.', v:-7.8},
+  {c:'Argentina', v:-9.0},{c:'Colombia', v:-13.2},{c:'México', v:-23.8},
+  {c:'Irán', v:-99.0},{c:'Venezuela', v:-100.0}
+].reverse();
+
+new Chart(momCtx, {
+  type:'bar',
+  data:{
+    labels:momData.map(d=>d.c),
+    datasets:[{
+      data:momData.map(d=>d.v),
+      backgroundColor:momData.map(d=>d.v>0?'rgba(74,222,128,0.7)':'rgba(248,113,113,0.7)'),
+      borderColor:momData.map(d=>d.v>0?'#4ade80':'#f87171'),
+      borderWidth:1,borderRadius:3
+    }]
+  },
+  options:{
+    indexAxis:'y',
+    responsive:true,
+    plugins:{legend:{display:false},tooltip:{
+      backgroundColor:'#141720',borderColor:'#252a3a',borderWidth:1,
+      callbacks:{label:ctx=>` ${ctx.parsed.x > 0?'+':''}${ctx.parsed.x.toFixed(1)}%`}
+    }},
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:9},callback:v=>(v>0?'+':'')+v+'%'},grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{ticks:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10}},grid:{display:false}}
+    }
+  }
+});
+
+// Tab navigation
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
